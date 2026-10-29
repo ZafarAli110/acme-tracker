@@ -1,7 +1,7 @@
 import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
 import {WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import {z} from 'zod';
-import {STATUS_LABELS, TICKET_STATUSES, type ActivityDto, type TicketDto} from '../tickets/ticket-dto';
+import {STATUS_LABELS, TICKET_STATUSES, TICKET_TYPES, type ActivityDto, type TicketDto} from '../tickets/ticket-dto';
 import {TrackerError, type TicketService} from '../tickets/ticket-service';
 
 const STATUS_HELP = TICKET_STATUSES.map((status) => `${status} (${STATUS_LABELS[status]})`).join(', ');
@@ -51,6 +51,28 @@ function createMcpServer(ticketService: TicketService): McpServer {
       annotations: {readOnlyHint: true},
     },
     ({key}) => respond(() => formatTicket(ticketService.get(key))),
+  );
+
+  server.registerTool(
+    'create_ticket',
+    {
+      title: 'Create a ticket',
+      description:
+        'Adds a ticket to the bottom of the backlog, in To Do, and returns its key. For a bug found while checking ' +
+        'another ticket, start the description with that ticket\'s key ("Found while checking ACME-108."), then ' +
+        'what was done, what happened, what should have happened, and the command or steps that show it.',
+      inputSchema: {
+        type: z.enum(TICKET_TYPES).describe('story or bug'),
+        title: z.string().describe('One line: what is wrong, or what is wanted'),
+        description: z.string().describe('Markdown'),
+      },
+      annotations: {readOnlyHint: false},
+    },
+    ({type, title, description}) =>
+      respond(() => {
+        const ticket = ticketService.create({type, title, description}, 'agent');
+        return `Created ${ticket.key}: ${ticket.title}`;
+      }),
   );
 
   server.registerTool(

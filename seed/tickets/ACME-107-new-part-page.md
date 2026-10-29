@@ -4,7 +4,7 @@ type: story
 
 # ACME-107 Add a new part, with its photos, on its own page
 
-**Requested by** Alice (Dealer Admin), for the parts counters at Northside and Riverside
+**Requested by** Maria (Service Manager), for the parts counters at Northside and Riverside
 
 > The counter keys in new parts from the supplier's delivery note. The "New part" box closes if you click anywhere
 > outside it, and everything typed is gone; that happened three times last Monday with a 40-line delivery. Then the
@@ -42,14 +42,14 @@ Adding a part, photos included, happens on a page of its own and is saved in one
 
 ## How we will check
 
-- As `alice` at Northside: open New part from the list, type a part number and press back; the page asks before
+- As `maria` at Northside: open New part from the list, type a part number and press back; the page asks before
   leaving.
-- As `alice`: save with the price empty; the price field says it is required and nothing is created.
-- As `alice`: add two photos and save with part number `brk-pad-001`; it shows as `BRK-PAD-001`, the message under it
+- As `maria`: save with the price empty; the price field says it is required and nothing is created.
+- As `maria`: add two photos and save with part number `brk-pad-001`; it shows as `BRK-PAD-001`, the message under it
   says the part already exists, the other fields and both photos are still there, and no photo was stored anywhere.
-- As `alice`: save a new part with two photos, the second one starred; the new part's page opens with both photos and
+- As `maria`: save a new part with two photos, the second one starred; the new part's page opens with both photos and
   the second as the default, and going back to Parts shows the part with that photo.
-- As `alice`: start a part at Northside, switch to Riverside in the top bar; the page asks first, and after switching
+- As `maria`: start a part at Northside, switch to Riverside in the top bar; the page asks first, and after switching
   the bins offered are Riverside's.
 
 ## Technical notes (tech lead)
