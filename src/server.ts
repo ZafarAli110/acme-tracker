@@ -1,10 +1,12 @@
 import homepage from '../web/index.html';
 import {apiRoutes} from './http/api-routes';
 import {handleMcpRequestAsync} from './mcp/mcp-server';
+import {stopPreviousServerAsync} from './previous-server';
 import {openTracker} from './tracker';
 
 const PORT = Number(process.env['TRACKER_PORT'] ?? 4100);
 
+await stopPreviousServerAsync(PORT);
 const ticketService = openTracker();
 
 // One process: the web app (Bun bundles web/ on the fly), its REST API, and the MCP server agents connect to.
