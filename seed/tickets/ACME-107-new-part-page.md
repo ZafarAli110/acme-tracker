@@ -51,11 +51,3 @@ Adding a part, photos included, happens on a page of its own and is saved in one
   the second as the default, and going back to Parts shows the part with that photo.
 - As `maria`: start a part at Northside, switch to Riverside in the top bar; the page asks first, and after switching
   the bins offered are Riverside's.
-
-## Technical notes (tech lead)
-
-Build it like the part's edit page (`web/app/pages/parts/PartEdit.tsx` and `PartForm.tsx`), the way
-`docs/standards/web-architecture.md` describes: a route module with `clientLoader` (the bins) and `clientAction`
-(the save), React Hook Form with Valibot, TanStack Query, translations in English and French. Do not copy
-`PartCreateDialog`. The service side follows `docs/standards/file-uploads.md` ("Saving a record together with its
-files"), as `UpdatePartCommandHandler` does.
