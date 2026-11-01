@@ -29,7 +29,7 @@ On the Customers list, an **Export to Excel** button that gives us the list as w
 
 ## How we will check
 
-Load the large customer book first: `bun run seed:bulk` (Northside gets 1.2 million customers, Riverside 400,000).
+Check it with the full customer book: Northside's 1.2 million customers and Riverside's 400,000.
 
 - As `maria` at Riverside: filter Status is Active, sort by City, hide Phone. The file has exactly the rows the list
   says (its total), in the same order, without a Phone column.
