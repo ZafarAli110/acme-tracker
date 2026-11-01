@@ -33,7 +33,7 @@ describe('seedTickets', () => {
     const count = seedTickets(service, join(import.meta.dir, '..', '..', '..', 'seed', 'tickets'));
 
     const tickets = service.list();
-    expect(count).toBe(8);
+    expect(count).toBe(9);
     expect(tickets.map((ticket) => ticket.key)).toEqual([
       'ACME-101',
       'ACME-102',
@@ -43,6 +43,7 @@ describe('seedTickets', () => {
       'ACME-106',
       'ACME-107',
       'ACME-108',
+      'ACME-109',
     ]);
     expect(tickets.every((ticket) => ticket.status === 'to-do')).toBe(true);
     expect(tickets.find((ticket) => ticket.key === 'ACME-106')?.type).toBe('bug');
