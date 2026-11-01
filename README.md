@@ -18,7 +18,8 @@ bun start
 | Web page     | http://localhost:4100     |
 | MCP endpoint | http://localhost:4100/mcp |
 
-The first start creates the tickets from `seed/tickets/`. Set `TRACKER_PORT` to use another port.
+Every start adds the tickets in `seed/tickets/` that the tracker does not have yet: all of them the first time, then only
+new ones, leaving the rest as they are. Set `TRACKER_PORT` to use another port.
 
 ## Connect an agent
 

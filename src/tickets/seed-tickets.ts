@@ -24,19 +24,36 @@ export function parseSeedTicket(markdown: string, fileName: string): SeedTicket 
   return {key, type: type as TicketType, title: title.trim(), description: description.trim()};
 }
 
-/** Creates the seed tickets in key order, so they get exactly the keys their files name. Run on an empty tracker. */
-export function seedTickets(ticketService: TicketService, directory: string): number {
-  const tickets = readdirSync(directory)
+/**
+ * Adds the seed tickets the tracker does not have yet, in key order, so each gets exactly the key its file names.
+ * A new tracker gets them all. One started before a ticket was written gets just the new ones, and everything it
+ * already has stays as it is: status, order, comments. A seed ticket whose key is already taken by a ticket made in the
+ * tracker is skipped with a warning (`bun run reset` starts again from the seed). Returns the keys it added.
+ */
+export function seedTickets(ticketService: TicketService, directory: string): string[] {
+  const seeds = readdirSync(directory)
     .filter((name) => name.endsWith('.md'))
     .map((name) => parseSeedTicket(readFileSync(join(directory, name), 'utf8'), name))
     .toSorted((a, b) => a.key.localeCompare(b.key, 'en', {numeric: true}));
-  for (const seed of tickets) {
+  const existing = new Map(ticketService.list().map((ticket) => [ticket.key, ticket.title]));
+  const added: string[] = [];
+  for (const seed of seeds) {
+    const title = existing.get(seed.key);
+    if (title !== undefined) {
+      if (title !== seed.title) {
+        console.warn(`Seed ticket ${seed.key} skipped: ${seed.key} is already "${title}". bun run reset starts again.`);
+      }
+      continue;
+    }
     const created = ticketService.create({type: seed.type, title: seed.title, description: seed.description}, 'person');
     if (created.key !== seed.key) {
       throw new Error(
-        `Seed ticket ${seed.key} was created as ${created.key}: is the tracker empty, and are the keys consecutive?`,
+        `Seed ticket ${seed.key} was created as ${created.key}: a ticket made in the tracker took the key before it. ` +
+          'Run bun run reset (with the tracker stopped) to start again from the seed.',
       );
     }
+    existing.set(created.key, created.title);
+    added.push(created.key);
   }
-  return tickets.length;
+  return added;
 }

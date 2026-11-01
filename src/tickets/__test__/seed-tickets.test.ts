@@ -1,4 +1,6 @@
 import {describe, expect, test} from 'bun:test';
+import {copyFileSync, mkdtempSync, readdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {openDatabase} from '../../database/open-database';
 import {parseSeedTicket, seedTickets} from '../seed-tickets';
@@ -26,14 +28,25 @@ describe('parseSeedTicket', () => {
   });
 });
 
+const SEED_DIRECTORY = join(import.meta.dir, '..', '..', '..', 'seed', 'tickets');
+
+/** A seed directory holding only the first `count` seed tickets: a tracker started before the later ones were written. */
+function olderSeedDirectory(count: number): string {
+  const directory = mkdtempSync(join(tmpdir(), 'acme-seed-'));
+  for (const name of readdirSync(SEED_DIRECTORY).toSorted().slice(0, count)) {
+    copyFileSync(join(SEED_DIRECTORY, name), join(directory, name));
+  }
+  return directory;
+}
+
 describe('seedTickets', () => {
   test('creates the seed tickets with the keys their files name', () => {
     const service = new TicketService(new TicketRepository(openDatabase(':memory:')));
 
-    const count = seedTickets(service, join(import.meta.dir, '..', '..', '..', 'seed', 'tickets'));
+    const added = seedTickets(service, SEED_DIRECTORY);
 
     const tickets = service.list();
-    expect(count).toBe(9);
+    expect(added).toHaveLength(9);
     expect(tickets.map((ticket) => ticket.key)).toEqual([
       'ACME-101',
       'ACME-102',
@@ -47,5 +60,28 @@ describe('seedTickets', () => {
     ]);
     expect(tickets.every((ticket) => ticket.status === 'to-do')).toBe(true);
     expect(tickets.find((ticket) => ticket.key === 'ACME-106')?.type).toBe('bug');
+  });
+
+  test('adds only the tickets a tracker started earlier does not have, and leaves the others as they are', () => {
+    const service = new TicketService(new TicketRepository(openDatabase(':memory:')));
+    seedTickets(service, olderSeedDirectory(7));
+    service.changeStatus('ACME-101', 'in-progress', 'person');
+
+    const added = seedTickets(service, SEED_DIRECTORY);
+
+    expect(added).toEqual(['ACME-108', 'ACME-109']);
+    expect(service.list()).toHaveLength(9);
+    expect(service.get('ACME-101').status).toBe('in-progress');
+  });
+
+  test('skips a seed ticket whose key a ticket made in the tracker already has, and keeps that ticket', () => {
+    const service = new TicketService(new TicketRepository(openDatabase(':memory:')));
+    seedTickets(service, olderSeedDirectory(7));
+    service.create({type: 'bug', title: 'Found while checking ACME-107', description: 'Steps'}, 'agent');
+
+    const added = seedTickets(service, SEED_DIRECTORY);
+
+    expect(added).toEqual(['ACME-109']);
+    expect(service.get('ACME-108').title).toBe('Found while checking ACME-107');
   });
 });
