@@ -1,10 +1,20 @@
-import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
-import {WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import {z} from 'zod';
+import {McpServer, WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/server';
+import {toStandardJsonSchema} from '@valibot/to-json-schema';
+import * as v from 'valibot';
 import {STATUS_LABELS, TICKET_STATUSES, TICKET_TYPES, type ActivityDto, type TicketDto} from '../tickets/ticket-dto';
 import {TrackerError, type TicketService} from '../tickets/ticket-service';
 
 const STATUS_HELP = TICKET_STATUSES.map((status) => `${status} (${STATUS_LABELS[status]})`).join(', ');
+
+/**
+ * A tool's input, as a valibot schema the MCP server can both validate with and publish as JSON Schema (Standard JSON
+ * Schema), so agents see each field's type and description.
+ */
+function toolInput<TEntries extends v.ObjectEntries>(entries: TEntries) {
+  return toStandardJsonSchema(v.object(entries));
+}
+
+const ticketKey = v.pipe(v.string(), v.description('The ticket key, for example ACME-101'));
 
 /**
  * Handles one MCP request over Streamable HTTP. Stateless: every request gets its own server and transport, so there
@@ -28,7 +38,9 @@ function createMcpServer(ticketService: TicketService): McpServer {
     {
       title: 'List tickets',
       description: `Lists the backlog in priority order: key, type, status and title. Statuses: ${STATUS_HELP}.`,
-      inputSchema: {status: z.enum(TICKET_STATUSES).optional().describe('Only tickets with this status')},
+      inputSchema: toolInput({
+        status: v.optional(v.pipe(v.picklist(TICKET_STATUSES), v.description('Only tickets with this status'))),
+      }),
       annotations: {readOnlyHint: true},
     },
     ({status}) =>
@@ -47,7 +59,7 @@ function createMcpServer(ticketService: TicketService): McpServer {
       title: 'Get a ticket',
       description:
         'Returns one ticket: its description and acceptance criteria as markdown, its status and its activity.',
-      inputSchema: {key: z.string().describe('The ticket key, for example ACME-101')},
+      inputSchema: toolInput({key: ticketKey}),
       annotations: {readOnlyHint: true},
     },
     ({key}) => respond(() => formatTicket(ticketService.get(key))),
@@ -61,11 +73,11 @@ function createMcpServer(ticketService: TicketService): McpServer {
         'Adds a ticket to the bottom of the backlog, in To Do, and returns its key. For a bug found while checking ' +
         'another ticket, start the description with that ticket\'s key ("Found while checking ACME-108."), then ' +
         'what was done, what happened, what should have happened, and the command or steps that show it.',
-      inputSchema: {
-        type: z.enum(TICKET_TYPES).describe('story or bug'),
-        title: z.string().describe('One line: what is wrong, or what is wanted'),
-        description: z.string().describe('Markdown'),
-      },
+      inputSchema: toolInput({
+        type: v.pipe(v.picklist(TICKET_TYPES), v.description('story or bug')),
+        title: v.pipe(v.string(), v.description('One line: what is wrong, or what is wanted')),
+        description: v.pipe(v.string(), v.description('Markdown')),
+      }),
       annotations: {readOnlyHint: false},
     },
     ({type, title, description}) =>
@@ -80,10 +92,10 @@ function createMcpServer(ticketService: TicketService): McpServer {
     {
       title: 'Move a ticket',
       description: `Moves a ticket to another status. Statuses: ${STATUS_HELP}.`,
-      inputSchema: {
-        key: z.string().describe('The ticket key, for example ACME-101'),
-        status: z.enum(TICKET_STATUSES).describe('The new status'),
-      },
+      inputSchema: toolInput({
+        key: ticketKey,
+        status: v.pipe(v.picklist(TICKET_STATUSES), v.description('The new status')),
+      }),
       annotations: {readOnlyHint: false, idempotentHint: true},
     },
     ({key, status}) =>
@@ -98,10 +110,10 @@ function createMcpServer(ticketService: TicketService): McpServer {
     {
       title: 'Comment on a ticket',
       description: 'Adds a comment to a ticket, for example what was done and how it was checked. Markdown is allowed.',
-      inputSchema: {
-        key: z.string().describe('The ticket key, for example ACME-101'),
-        comment: z.string().describe('The comment, in markdown'),
-      },
+      inputSchema: toolInput({
+        key: ticketKey,
+        comment: v.pipe(v.string(), v.description('The comment, in markdown')),
+      }),
       annotations: {readOnlyHint: false},
     },
     ({key, comment}) =>

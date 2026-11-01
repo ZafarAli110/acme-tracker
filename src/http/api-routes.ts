@@ -1,16 +1,16 @@
-import {z} from 'zod';
+import * as v from 'valibot';
 import {TICKET_STATUSES, TICKET_TYPES, type ProblemDto} from '../tickets/ticket-dto';
 import {TrackerError, type TicketService} from '../tickets/ticket-service';
 
-const ticketCreateRequest = z.object({
-  type: z.enum(TICKET_TYPES),
-  title: z.string(),
-  description: z.string(),
+const ticketCreateRequest = v.object({
+  type: v.picklist(TICKET_TYPES),
+  title: v.string(),
+  description: v.string(),
 });
-const ticketUpdateRequest = z.object({status: z.enum(TICKET_STATUSES).optional()});
-const commentCreateRequest = z.object({comment: z.string()});
-const backlogOrderRequest = z.object({keys: z.array(z.string())});
-const ticketMoveRequest = z.object({status: z.enum(TICKET_STATUSES), beforeKey: z.string().nullable()});
+const ticketUpdateRequest = v.object({status: v.optional(v.picklist(TICKET_STATUSES))});
+const commentCreateRequest = v.object({comment: v.string()});
+const backlogOrderRequest = v.object({keys: v.array(v.string())});
+const ticketMoveRequest = v.object({status: v.picklist(TICKET_STATUSES), beforeKey: v.nullable(v.string())});
 
 type KeyRequest = Request & {params: {key: string}};
 
@@ -61,12 +61,16 @@ export function apiRoutes(ticketService: TicketService) {
   };
 }
 
-async function parseAsync<T>(request: Request, schema: z.ZodType<T>): Promise<T> {
-  const result = schema.safeParse(await request.json().catch(() => null));
+/** The request body checked against its schema; a body that does not fit is a 400 that says what is wrong. */
+async function parseAsync<TSchema extends v.GenericSchema>(
+  request: Request,
+  schema: TSchema,
+): Promise<v.InferOutput<TSchema>> {
+  const result = v.safeParse(schema, await request.json().catch(() => null));
   if (!result.success) {
-    throw new TrackerError(400, z.prettifyError(result.error));
+    throw new TrackerError(400, v.summarize(result.issues));
   }
-  return result.data;
+  return result.output;
 }
 
 function handle(work: () => Response): Response {
