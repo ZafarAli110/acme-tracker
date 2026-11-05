@@ -1,5 +1,7 @@
 import {moveTicket} from './move-ticket';
 import {
+  ATTACHMENT_TYPES,
+  MAX_ATTACHMENT_BYTES,
   STATUS_LABELS,
   type ActivityDto,
   type Actor,
@@ -8,7 +10,7 @@ import {
   type TicketListItemDto,
   type TicketStatus,
 } from './ticket-dto';
-import type {TicketRepository, TicketRow} from './ticket-repository';
+import type {AttachmentRow, TicketRepository, TicketRow} from './ticket-repository';
 
 export const KEY_PREFIX = 'ACME';
 
@@ -79,6 +81,7 @@ export class TicketService {
         fromStatus: null,
         toStatus: 'to-do',
         comment: null,
+        attachmentName: null,
         at,
       });
       return ticket.key;
@@ -127,10 +130,52 @@ export class TicketService {
         fromStatus: null,
         toStatus: null,
         comment: text,
+        attachmentName: null,
         at,
       });
     });
     return this.get(ticket.key);
+  }
+
+  /**
+   * A file on a ticket, with a caption: a picture, such as a screenshot that shows a check passing. Only the kinds in
+   * ATTACHMENT_TYPES, up to MAX_ATTACHMENT_BYTES; the bytes are kept in the tracker's database.
+   */
+  public attach(key: string, fileName: string, bytes: Uint8Array, caption: string, actor: Actor): TicketDto {
+    const ticket = this.getRow(key);
+    const name = fileName.split(/[\\/]/).at(-1)?.trim() ?? '';
+    const extension = name.includes('.') ? name.slice(name.lastIndexOf('.')).toLowerCase() : '';
+    const contentType = ATTACHMENT_TYPES[extension];
+    if (!contentType) {
+      throw new TrackerError(400, `A ticket takes ${Object.keys(ATTACHMENT_TYPES).join(', ')} files, not "${name}".`);
+    }
+    if (bytes.length === 0 || bytes.length > MAX_ATTACHMENT_BYTES) {
+      throw new TrackerError(400, `"${name}" is ${bytes.length} bytes: a file must be 1 byte to 5 MB.`);
+    }
+    const at = this._now().toISOString();
+    this._ticketRepository.inTransaction(() => {
+      this._ticketRepository.touch(ticket.key, at);
+      const activityId = this._ticketRepository.insertActivity({
+        ticketKey: ticket.key,
+        actor,
+        kind: 'attached',
+        fromStatus: null,
+        toStatus: null,
+        comment: caption.trim() || null,
+        attachmentName: name,
+        at,
+      });
+      this._ticketRepository.insertAttachment(activityId, {contentType, bytes});
+    });
+    return this.get(ticket.key);
+  }
+
+  public attachment(key: string, activityId: number): AttachmentRow {
+    const file = this._ticketRepository.findAttachment(key.trim(), activityId);
+    if (file === null) {
+      throw new TrackerError(404, `${key} has no attachment ${activityId}.`);
+    }
+    return file;
   }
 
   /** `keys` must name every ticket exactly once, so a stale page cannot drop a ticket from the backlog. */
@@ -162,6 +207,7 @@ export class TicketService {
       fromStatus: ticket.status,
       toStatus: status,
       comment: null,
+      attachmentName: null,
       at,
     });
   }

@@ -1,7 +1,14 @@
 import {McpServer, WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/server';
 import {toStandardJsonSchema} from '@valibot/to-json-schema';
 import * as v from 'valibot';
-import {STATUS_LABELS, TICKET_STATUSES, TICKET_TYPES, type ActivityDto, type TicketDto} from '../tickets/ticket-dto';
+import {
+  ATTACHMENT_TYPES,
+  STATUS_LABELS,
+  TICKET_STATUSES,
+  TICKET_TYPES,
+  type ActivityDto,
+  type TicketDto,
+} from '../tickets/ticket-dto';
 import {TrackerError, type TicketService} from '../tickets/ticket-service';
 
 const STATUS_HELP = TICKET_STATUSES.map((status) => `${status} (${STATUS_LABELS[status]})`).join(', ');
@@ -123,6 +130,37 @@ function createMcpServer(ticketService: TicketService): McpServer {
       }),
   );
 
+  server.registerTool(
+    'attach_file',
+    {
+      title: 'Attach a file to a ticket',
+      description:
+        'Attaches a picture to a ticket, with a caption, for example a screenshot that shows a test passing. Give the ' +
+        `absolute path of a file on this machine (${Object.keys(ATTACHMENT_TYPES).join(', ')}; up to 5 MB). ` +
+        "It shows in the ticket's activity.",
+      inputSchema: toolInput({
+        key: ticketKey,
+        path: v.pipe(v.string(), v.description('Absolute path of the file, for example /tmp/qa/T1-riverside.png')),
+        caption: v.pipe(
+          v.string(),
+          v.description('What the picture shows, in one line, e.g. "T1 PASS: only Riverside"'),
+        ),
+      }),
+      annotations: {readOnlyHint: false},
+    },
+    async ({key, path, caption}) => {
+      const file = Bun.file(path);
+      if (!(await file.exists())) {
+        return {content: [{type: 'text' as const, text: `There is no file at ${path}.`}], isError: true};
+      }
+      const bytes = await file.bytes();
+      return respond(() => {
+        const ticket = ticketService.attach(key, path, bytes, caption, 'agent');
+        return `Attached ${path.split(/[\\/]/).at(-1)} to ${ticket.key}.`;
+      });
+    },
+  );
+
   return server;
 }
 
@@ -161,6 +199,8 @@ function formatActivity(activity: ActivityDto): string {
       return `- ${activity.at}: ${who} moved it from ${label(activity.fromStatus)} to ${label(activity.toStatus)}`;
     case 'commented':
       return `- ${activity.at}: ${who} commented: ${activity.comment ?? ''}`;
+    case 'attached':
+      return `- ${activity.at}: ${who} attached ${activity.attachmentName ?? 'a file'}: ${activity.comment ?? ''}`;
   }
 }
 

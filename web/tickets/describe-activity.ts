@@ -10,6 +10,8 @@ export function describeActivity(activity: ActivityDto): string {
         : `moved ${STATUS_LABELS[activity.fromStatus]} → ${STATUS_LABELS[activity.toStatus]}`;
     case 'commented':
       return 'commented';
+    case 'attached':
+      return `attached ${activity.attachmentName ?? 'a file'}`;
   }
 }
 

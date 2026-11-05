@@ -43,6 +43,7 @@ describe('TicketService', () => {
         fromStatus: null,
         toStatus: 'to-do',
         comment: null,
+        attachmentName: null,
         at: NOW.toISOString(),
       },
     ]);
@@ -87,6 +88,45 @@ describe('TicketService', () => {
 
     expect(ticket.lastActivity).toMatchObject({actor: 'agent', kind: 'commented', comment: 'Done, tests pass.'});
     expectTrackerError(() => service.comment('ACME-101', ' ', 'agent'), 400);
+  });
+
+  test('attach keeps a picture with its caption, and serves the same bytes back', () => {
+    service.create({type: 'story', title: 'Recent customers', description: ''}, 'person');
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    const ticket = service.attach('acme-101', '/tmp/qa/T1-riverside.png', png, '  T1 PASS: only Riverside ', 'agent');
+
+    expect(ticket.lastActivity).toMatchObject({
+      actor: 'agent',
+      kind: 'attached',
+      attachmentName: 'T1-riverside.png',
+      comment: 'T1 PASS: only Riverside',
+    });
+    const file = service.attachment('ACME-101', ticket.lastActivity.id);
+    expect(file.contentType).toBe('image/png');
+    expect([...file.bytes]).toEqual([...png]);
+  });
+
+  test('attach refuses anything but a picture, an empty file and one over 5 MB', () => {
+    service.create({type: 'story', title: 'Recent customers', description: ''}, 'person');
+
+    expectTrackerError(() => service.attach('ACME-101', 'notes.txt', new Uint8Array([1]), '', 'agent'), 400);
+    expectTrackerError(() => service.attach('ACME-101', 'empty.png', new Uint8Array(0), '', 'agent'), 400);
+    expectTrackerError(
+      () => service.attach('ACME-101', 'huge.png', new Uint8Array(5 * 1024 * 1024 + 1), '', 'agent'),
+      400,
+    );
+    expectTrackerError(() => service.attachment('ACME-101', 999), 404);
+  });
+
+  test('a ticket moves into In QA and on to Done', () => {
+    service.create({type: 'story', title: 'Recent customers', description: ''}, 'person');
+
+    service.changeStatus('ACME-101', 'in-qa', 'agent');
+    const done = service.changeStatus('ACME-101', 'done', 'agent');
+
+    expect(done.status).toBe('done');
+    expect(done.activity.map((activity) => activity.toStatus)).toEqual(['to-do', 'in-qa', 'done']);
   });
 
   test('list filters by status, in backlog order', () => {

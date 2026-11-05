@@ -46,9 +46,26 @@ describe('the MCP server', () => {
       'create_ticket',
       'update_ticket_status',
       'add_comment',
+      'attach_file',
     ]);
     const createTicket = tools.find((tool) => tool.name === 'create_ticket');
     expect(createTicket?.inputSchema.properties['type']?.description).toBe('story or bug');
+  });
+
+  test('attaches a screenshot from a path, recorded as done by an agent', async () => {
+    const service = newService();
+    service.create({type: 'story', title: 'Recent customers', description: ''}, 'person');
+    const path = `${process.env['TMPDIR'] ?? '/tmp'}/acme-tracker-test-${Date.now()}.png`;
+    await Bun.write(path, new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+
+    const {body} = await callAsync(service, 'tools/call', {
+      name: 'attach_file',
+      arguments: {key: 'ACME-101', path, caption: 'T1 PASS'},
+    });
+
+    expect(JSON.stringify(body.result)).toContain('Attached');
+    expect(service.get('ACME-101').lastActivity).toMatchObject({actor: 'agent', kind: 'attached', comment: 'T1 PASS'});
+    await Bun.file(path).delete();
   });
 
   test('creates a ticket through a tool call, recorded as done by an agent', async () => {

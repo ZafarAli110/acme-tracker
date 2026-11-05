@@ -53,7 +53,7 @@ export function BoardPage() {
       {(tickets.error ?? moveTicket.error) && (
         <Alert severity="error">{(tickets.error ?? moveTicket.error)?.message}</Alert>
       )}
-      <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: 'repeat(4, minmax(0, 1fr))'}, gap: 2}}>
+      <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: 'repeat(5, minmax(0, 1fr))'}, gap: 2}}>
         {TICKET_STATUSES.map((status) => {
           const column = all.filter((ticket) => ticket.status === status);
           const atBottom = target?.status === status && target.beforeKey === null;

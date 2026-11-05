@@ -94,7 +94,7 @@ export function TicketPage() {
           </Typography>
           <Stack sx={{gap: 1.5, borderLeft: 2, borderColor: 'divider', pl: 1.5}} data-testid="ticket-activity">
             {data.activity.map((activity) => (
-              <ActivityEntry key={activity.id} activity={activity} />
+              <ActivityEntry key={activity.id} ticketKey={data.key} activity={activity} />
             ))}
           </Stack>
         </Paper>
@@ -125,7 +125,7 @@ export function TicketPage() {
   );
 }
 
-function ActivityEntry({activity}: {activity: ActivityDto}) {
+function ActivityEntry({ticketKey, activity}: {ticketKey: string; activity: ActivityDto}) {
   return (
     <Box>
       {activity.kind === 'created' ? (
@@ -149,6 +149,26 @@ function ActivityEntry({activity}: {activity: ActivityDto}) {
           <Markdown>{activity.comment}</Markdown>
         </Paper>
       )}
+      {activity.kind === 'attached' && (
+        <Link
+          href={attachmentUrl(ticketKey, activity.id)}
+          target="_blank"
+          rel="noopener"
+          sx={{display: 'block', mt: 0.5}}
+        >
+          <Box
+            component="img"
+            src={attachmentUrl(ticketKey, activity.id)}
+            alt={activity.comment ?? activity.attachmentName ?? 'Attachment'}
+            sx={{width: '100%', border: 1, borderColor: 'divider', borderRadius: 1}}
+            data-testid="ticket-attachment"
+          />
+        </Link>
+      )}
     </Box>
   );
+}
+
+function attachmentUrl(ticketKey: string, activityId: number): string {
+  return `/api/tickets/${encodeURIComponent(ticketKey)}/attachments/${activityId}`;
 }

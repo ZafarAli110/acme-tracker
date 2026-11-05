@@ -5,6 +5,7 @@ const STATUS_COLOURS: Record<TicketStatus, ChipProps['color']> = {
   'to-do': 'default',
   'in-progress': 'info',
   'in-review': 'warning',
+  'in-qa': 'secondary',
   done: 'success',
 };
 

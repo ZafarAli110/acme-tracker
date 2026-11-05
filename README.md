@@ -31,12 +31,13 @@ claude mcp add --transport http acme-tracker http://localhost:4100/mcp
 
 The tools:
 
-| Tool                   | What it does                                                         |
-| ---------------------- | -------------------------------------------------------------------- |
-| `list_tickets`         | the backlog in priority order, optionally only one status            |
-| `get_ticket`           | one ticket: description and acceptance criteria (markdown), activity |
-| `update_ticket_status` | moves a ticket: `to-do`, `in-progress`, `in-review`, `done`          |
-| `add_comment`          | adds a comment, e.g. what was done and how it was checked            |
+| Tool                   | What it does                                                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `list_tickets`         | the backlog in priority order, optionally only one status                                                             |
+| `get_ticket`           | one ticket: description and acceptance criteria (markdown), activity                                                  |
+| `update_ticket_status` | moves a ticket: `to-do`, `in-progress`, `in-review`, `in-qa`, `done`                                                  |
+| `add_comment`          | adds a comment, e.g. what was done and how it was checked                                                             |
+| `attach_file`          | attaches a picture (png, jpg, webp; up to 5 MB) from a path on this machine, with a caption: a screenshot as evidence |
 
 Everything an agent does is recorded as done by an agent and marked in purple on the board, so the room can see it.
 

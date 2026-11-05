@@ -31,7 +31,19 @@ export function openDatabase(path: string): Database {
       from_status TEXT,
       to_status TEXT,
       comment TEXT,
+      attachment_name TEXT,
       at TEXT NOT NULL
+    )`);
+  // A database made before attachments: add the column it lacks.
+  const columns = database.query<{name: string}, []>('PRAGMA table_info(activity)').all();
+  if (!columns.some((column) => column.name === 'attachment_name')) {
+    database.run('ALTER TABLE activity ADD COLUMN attachment_name TEXT');
+  }
+  database.run(`
+    CREATE TABLE IF NOT EXISTS attachments (
+      activity_id INTEGER PRIMARY KEY REFERENCES activity(id) ON DELETE CASCADE,
+      content_type TEXT NOT NULL,
+      bytes BLOB NOT NULL
     )`);
   return database;
 }

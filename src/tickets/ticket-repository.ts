@@ -20,12 +20,19 @@ export interface NewActivity {
   fromStatus: TicketStatus | null;
   toStatus: TicketStatus | null;
   comment: string | null;
+  attachmentName: string | null;
   at: string;
+}
+
+export interface AttachmentRow {
+  contentType: string;
+  bytes: Uint8Array;
 }
 
 const TICKET_COLUMNS =
   'key, number, type, title, description, status, rank, created_at AS createdAt, updated_at AS updatedAt';
-const ACTIVITY_COLUMNS = 'id, actor, kind, from_status AS fromStatus, to_status AS toStatus, comment, at';
+const ACTIVITY_COLUMNS =
+  'id, actor, kind, from_status AS fromStatus, to_status AS toStatus, comment, attachment_name AS attachmentName, at';
 
 /** SQL for tickets and their activity. bun:sqlite is synchronous, so nothing here is async. */
 export class TicketRepository {
@@ -94,11 +101,12 @@ export class TicketRepository {
     this._database.transaction(() => keys.forEach((key, index) => update.run(key, index + 1)))();
   }
 
-  public insertActivity(activity: NewActivity): void {
-    this._database
+  /** Returns the new activity's id. */
+  public insertActivity(activity: NewActivity): number {
+    const result = this._database
       .query(
-        `INSERT INTO activity (ticket_key, actor, kind, from_status, to_status, comment, at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+        `INSERT INTO activity (ticket_key, actor, kind, from_status, to_status, comment, attachment_name, at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
       )
       .run(
         activity.ticketKey,
@@ -107,8 +115,29 @@ export class TicketRepository {
         activity.fromStatus,
         activity.toStatus,
         activity.comment,
+        activity.attachmentName,
         activity.at,
       );
+    return Number(result.lastInsertRowid);
+  }
+
+  public insertAttachment(activityId: number, attachment: AttachmentRow): void {
+    this._database
+      .query('INSERT INTO attachments (activity_id, content_type, bytes) VALUES (?1, ?2, ?3)')
+      .run(activityId, attachment.contentType, attachment.bytes);
+  }
+
+  /** The file attached by one of a ticket's activities, or null. */
+  public findAttachment(ticketKey: string, activityId: number): AttachmentRow | null {
+    return (
+      this._database
+        .query<AttachmentRow, [string, number]>(
+          `SELECT a.content_type AS contentType, a.bytes AS bytes FROM attachments a
+           JOIN activity ON activity.id = a.activity_id
+           WHERE activity.ticket_key = ?1 COLLATE NOCASE AND a.activity_id = ?2`,
+        )
+        .get(ticketKey, activityId) ?? null
+    );
   }
 
   public findActivity(ticketKey: string): ActivityDto[] {

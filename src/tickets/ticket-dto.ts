@@ -1,13 +1,14 @@
 // The tracker's contracts, shared by the REST API, the MCP tools and the web app. Every field is always present; a
 // missing value is `null`.
 
-export const TICKET_STATUSES = ['to-do', 'in-progress', 'in-review', 'done'] as const;
+export const TICKET_STATUSES = ['to-do', 'in-progress', 'in-review', 'in-qa', 'done'] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   'to-do': 'To Do',
   'in-progress': 'In Progress',
   'in-review': 'In Review',
+  'in-qa': 'In QA',
   done: 'Done',
 };
 
@@ -17,7 +18,18 @@ export type TicketType = (typeof TICKET_TYPES)[number];
 /** Who did something: a person in the web app, or an agent through MCP. */
 export type Actor = 'person' | 'agent';
 
-export type ActivityKind = 'created' | 'status-changed' | 'commented';
+export type ActivityKind = 'created' | 'status-changed' | 'commented' | 'attached';
+
+/** The kinds of file a ticket takes: pictures, such as a screenshot that shows a check passing. */
+export const ATTACHMENT_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
+
+/** The largest file a ticket takes, in bytes. */
+export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 export interface ActivityDto {
   id: number;
@@ -26,6 +38,8 @@ export interface ActivityDto {
   fromStatus: TicketStatus | null;
   toStatus: TicketStatus | null;
   comment: string | null;
+  /** For an 'attached' activity, the file's name; the file is at `/api/tickets/<key>/attachments/<id>`. */
+  attachmentName: string | null;
   at: string;
 }
 
