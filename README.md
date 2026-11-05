@@ -21,6 +21,10 @@ bun start
 Every start adds the tickets in `seed/tickets/` that the tracker does not have yet: all of them the first time, then only
 new ones, leaving the rest as they are. Set `TRACKER_PORT` to use another port.
 
+**Port 4100 in use, or the page shows only grey loading boxes?** An earlier tracker still holds the port: a terminal left
+open, or one paused with Ctrl+Z, which keeps the port but never answers. Run `bun start` again: it stops that tracker
+first. If something else holds the port, it tells you which process and how to stop it.
+
 ## Connect an agent
 
 Claude Code:
