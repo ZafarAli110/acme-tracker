@@ -43,6 +43,7 @@ export function TicketPage() {
     return <Alert severity="error">{ticket.error?.message ?? `There is no ticket ${key}.`}</Alert>;
   }
   const data = ticket.data;
+  const comments = data.activity.filter(isComment);
 
   return (
     <Box sx={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: 'minmax(0, 2fr) minmax(280px, 1fr)'}, gap: 3}}>
@@ -69,6 +70,38 @@ export function TicketPage() {
             <Typography color="text.secondary">No description.</Typography>
           )}
         </Paper>
+
+        <Typography variant="subtitle1" component="h2" sx={{fontWeight: 600, mt: 4, mb: 1.5}}>
+          Comments
+        </Typography>
+        <Stack sx={{gap: 2}} data-testid="ticket-comments">
+          {comments.length === 0 && <Typography color="text.secondary">No comments yet.</Typography>}
+          {comments.map((activity) => (
+            <CommentEntry key={activity.id} ticketKey={data.key} activity={activity} />
+          ))}
+        </Stack>
+
+        <Stack sx={{gap: 1, mt: 3}}>
+          <TextField
+            label="Add a comment"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            multiline
+            minRows={3}
+            data-testid="comment-input"
+          />
+          {addComment.error && <Alert severity="error">{addComment.error.message}</Alert>}
+          <Box>
+            <Button
+              variant="contained"
+              onClick={() => addComment.mutate()}
+              disabled={comment.trim() === '' || addComment.isPending}
+              data-testid="comment-submit"
+            >
+              Comment
+            </Button>
+          </Box>
+        </Stack>
       </Box>
 
       <Stack sx={{gap: 2}}>
@@ -92,79 +125,79 @@ export function TicketPage() {
           <Typography variant="subtitle2" sx={{mb: 1.5}}>
             Activity
           </Typography>
-          <Stack sx={{gap: 1.5, borderLeft: 2, borderColor: 'divider', pl: 1.5}} data-testid="ticket-activity">
+          <Stack sx={{gap: 1.25, borderLeft: 2, borderColor: 'divider', pl: 1.5}} data-testid="ticket-activity">
             {data.activity.map((activity) => (
-              <ActivityEntry key={activity.id} ticketKey={data.key} activity={activity} />
+              <HistoryEntry key={activity.id} activity={activity} />
             ))}
           </Stack>
         </Paper>
-
-        <Stack sx={{gap: 1}}>
-          <TextField
-            label="Comment"
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-            multiline
-            minRows={2}
-            data-testid="comment-input"
-          />
-          {addComment.error && <Alert severity="error">{addComment.error.message}</Alert>}
-          <Box>
-            <Button
-              variant="outlined"
-              onClick={() => addComment.mutate()}
-              disabled={comment.trim() === '' || addComment.isPending}
-              data-testid="comment-submit"
-            >
-              Comment
-            </Button>
-          </Box>
-        </Stack>
       </Stack>
     </Box>
   );
 }
 
-function ActivityEntry({ticketKey, activity}: {ticketKey: string; activity: ActivityDto}) {
+/** What goes under the ticket: anything someone wrote or attached. The rest is history, in the sidebar. */
+function isComment(activity: ActivityDto): boolean {
+  return activity.kind === 'attached' || activity.comment !== null;
+}
+
+function ActorName({activity}: {activity: ActivityDto}) {
   return (
-    <Box>
-      {activity.kind === 'created' ? (
-        <Typography variant="body2">Created</Typography>
-      ) : (
+    <Box component="span" sx={{fontWeight: 700, color: activity.actor === 'agent' ? 'secondary.main' : 'text.primary'}}>
+      {actorName(activity)}
+    </Box>
+  );
+}
+
+function When({at}: {at: string}) {
+  return (
+    <Typography variant="caption" color="text.secondary" title={new Date(at).toLocaleString('en-GB')}>
+      {timeAgo(at)}
+    </Typography>
+  );
+}
+
+/** A comment under the ticket: who, when, what they wrote, and the picture when it is an attachment. */
+function CommentEntry({ticketKey, activity}: {ticketKey: string; activity: ActivityDto}) {
+  return (
+    <Paper variant="outlined" sx={{p: 2}} data-testid="ticket-comment">
+      <Stack direction="row" sx={{alignItems: 'baseline', gap: 1, mb: 0.5}}>
         <Typography variant="body2">
-          <Box
-            component="span"
-            sx={{fontWeight: 700, color: activity.actor === 'agent' ? 'secondary.main' : 'text.primary'}}
-          >
-            {actorName(activity)}
-          </Box>{' '}
-          {describeActivity(activity)}
+          <ActorName activity={activity} />
+          {activity.kind === 'commented' ? '' : ` ${describeActivity(activity)}`}
         </Typography>
-      )}
-      <Typography variant="caption" color="text.secondary" title={new Date(activity.at).toLocaleString('en-GB')}>
-        {timeAgo(activity.at)}
-      </Typography>
-      {activity.comment && (
-        <Paper variant="outlined" sx={{p: 1.5, mt: 0.5, bgcolor: 'background.default'}}>
-          <Markdown>{activity.comment}</Markdown>
-        </Paper>
-      )}
+        <When at={activity.at} />
+      </Stack>
+      {activity.comment && <Markdown>{activity.comment}</Markdown>}
       {activity.kind === 'attached' && (
         <Link
           href={attachmentUrl(ticketKey, activity.id)}
           target="_blank"
           rel="noopener"
-          sx={{display: 'block', mt: 0.5}}
+          sx={{display: 'block', mt: 1}}
         >
           <Box
             component="img"
             src={attachmentUrl(ticketKey, activity.id)}
             alt={activity.comment ?? activity.attachmentName ?? 'Attachment'}
-            sx={{width: '100%', border: 1, borderColor: 'divider', borderRadius: 1}}
+            sx={{maxWidth: '100%', border: 1, borderColor: 'divider', borderRadius: 1}}
             data-testid="ticket-attachment"
           />
         </Link>
       )}
+    </Paper>
+  );
+}
+
+/** One line of history in the sidebar: who did what, and when. */
+function HistoryEntry({activity}: {activity: ActivityDto}) {
+  return (
+    <Box>
+      <Typography variant="body2">
+        {activity.kind === 'created' ? 'Created' : <ActorName activity={activity} />}
+        {activity.kind === 'created' ? '' : ` ${describeActivity(activity)}`}
+      </Typography>
+      <When at={activity.at} />
     </Box>
   );
 }
