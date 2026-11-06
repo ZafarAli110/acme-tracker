@@ -1,6 +1,7 @@
-import {Box} from '@mui/material';
-import {Children, type ReactNode} from 'react';
+import {Box, Table, TableBody, TableCell, TableHead, TableRow} from '@mui/material';
+import {Children, Fragment, type ReactNode} from 'react';
 import ReactMarkdown from 'react-markdown';
+import {splitMarkdownTables} from './markdown-tables';
 
 const TASK = /^\[( |x|X)\]\s+/;
 
@@ -31,7 +32,46 @@ function ListItem({children}: {children?: ReactNode}) {
   );
 }
 
-/** Renders ticket markdown. Raw HTML in the markdown is shown as text, never run. */
+/** A paragraph's content without the paragraph: a cell holds one line. */
+function Unwrapped({children}: {children?: ReactNode}) {
+  return <Fragment>{children}</Fragment>;
+}
+
+/** A table cell's markdown (code, bold, a link) on one line: without the paragraph react-markdown wraps it in. */
+function InlineMarkdown({children}: {children: string}) {
+  return <ReactMarkdown components={{li: ListItem, p: Unwrapped}}>{children}</ReactMarkdown>;
+}
+
+function MarkdownTable({header, rows}: {header: string[]; rows: string[][]}) {
+  return (
+    <Box sx={{overflowX: 'auto', my: 1.5}}>
+      <Table size="small" data-testid="markdown-table">
+        <TableHead>
+          <TableRow>
+            {header.map((cell, column) => (
+              <TableCell key={column} sx={{fontWeight: 600}}>
+                <InlineMarkdown>{cell}</InlineMarkdown>
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((row, line) => (
+            <TableRow key={line}>
+              {header.map((_, column) => (
+                <TableCell key={column}>
+                  <InlineMarkdown>{row[column] ?? ''}</InlineMarkdown>
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+}
+
+/** Renders ticket markdown, pipe tables included. Raw HTML in the markdown is shown as text, never run. */
 export function Markdown({children}: {children: string}) {
   return (
     <Box
@@ -51,7 +91,15 @@ export function Markdown({children}: {children: string}) {
         '& blockquote': {borderLeft: 3, borderColor: 'divider', pl: 2, ml: 0, color: 'text.secondary'},
       }}
     >
-      <ReactMarkdown components={{li: ListItem}}>{children}</ReactMarkdown>
+      {splitMarkdownTables(children).map((block, index) =>
+        block.kind === 'table' ? (
+          <MarkdownTable key={index} header={block.header} rows={block.rows} />
+        ) : (
+          <ReactMarkdown key={index} components={{li: ListItem}}>
+            {block.text}
+          </ReactMarkdown>
+        ),
+      )}
     </Box>
   );
 }
