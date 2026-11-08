@@ -46,7 +46,7 @@ describe('seedTickets', () => {
     const added = seedTickets(service, SEED_DIRECTORY);
 
     const tickets = service.list();
-    expect(added).toHaveLength(22);
+    expect(added).toHaveLength(23);
     expect(tickets.map((ticket) => ticket.key)).toEqual([
       'ACME-101',
       'ACME-102',
@@ -70,6 +70,7 @@ describe('seedTickets', () => {
       'ACME-120',
       'ACME-121',
       'ACME-122',
+      'ACME-123',
     ]);
     expect(tickets.every((ticket) => ticket.status === 'to-do')).toBe(true);
     expect(tickets.find((ticket) => ticket.key === 'ACME-106')?.type).toBe('bug');
@@ -98,8 +99,9 @@ describe('seedTickets', () => {
       'ACME-120',
       'ACME-121',
       'ACME-122',
+      'ACME-123',
     ]);
-    expect(service.list()).toHaveLength(22);
+    expect(service.list()).toHaveLength(23);
     expect(service.get('ACME-101').status).toBe('in-progress');
   });
 
@@ -125,6 +127,7 @@ describe('seedTickets', () => {
       'ACME-120',
       'ACME-121',
       'ACME-122',
+      'ACME-123',
     ]);
     expect(service.get('ACME-108').title).toBe('Found while checking ACME-107');
   });
