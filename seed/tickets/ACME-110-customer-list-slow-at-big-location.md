@@ -19,6 +19,8 @@ The list has to feel the same at Northside as at a small location, however many 
 - Filtering by status or city, and searching by surname, answer within about a second too.
 - Adding or editing a customer is no slower than it is today.
 - The list shows exactly the same customers, in the same order, as before: only faster.
+- Putting the change live never stops the front desk: customers can still be opened, added and saved while it is
+  applied, at Northside too.
 
 ## How we will check
 
@@ -26,3 +28,5 @@ The list has to feel the same at Northside as at a small location, however many 
   sort by name, then by last contact, filter by a city, and search for a surname. Each answers within about a second.
 - The same steps at Riverside, before and after the change, show the same customers in the same order.
 - Adding a customer at Northside takes no longer than before the change.
+- While the change is being applied with the large sample data loaded, add and save a customer at Northside: it works
+  and takes no longer than usual.
